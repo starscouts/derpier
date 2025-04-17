@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Derpier</title>
+    <style>
+        * {
+            font-family: sans-serif;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        html, body {
+            margin: 0;
+        }
+
+        .i {
+            transition: transform 200ms;
+        }
+
+        .i:hover {
+            transform: scale(.9);
+        }
+
+        .i:active {
+            transform: scale(.75);
+        }
+
+        #items.disabled {
+            opacity: .5;
+            pointer-events: none;
+        }
+
+        .censored {
+            filter: blur(50px);
+        }
+
+        .predicted {
+            border-color: orange !important;
+        }
+    </style>
+</head>
+<body style="background-color: transparent; position: fixed; inset: 0;">
+<div id="loader" style="
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(10px);
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, .5);
+    justify-content: center;
+    text-align: center;
+"><div style="
+"><span style="
+    font-size: 24px;
+    font-weight: bold;
+    display: block;
+">Updating characters list...</span><span style="display: block;margin-top: 10px;margin-bottom: 20px;">This might take a while.</span><div style="
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background-color: rgba(0, 0, 0, .1);
+    margin-bottom: 10px;
+"><div id="loader-progress" style="
+    transition-property: width;
+    transition-duration: 1.5s;
+    transition-timing-function: linear;
+    width: 0;
+    height: 8px;
+    background: #f69696;
+    border-radius: 999px;
+"></div></div><span><span id="loader-percentage">0</span>% complete<span id="loader-eta-outer" style="display: none;">, <span id="loader-eta">-</span> remaining</span></span></div></div>
+<div id="loader2" style="
+    position: fixed;
+    inset: 0;
+    backdrop-filter: blur(10px);
+    z-index: 99;
+    display: none;
+    align-items: center;
+    background-color: rgba(255, 255, 255, .5);
+    justify-content: center;
+    text-align: center;
+"><div style="
+"><span style="
+    font-size: 24px;
+    font-weight: bold;
+    display: block;
+">Loading application..</span><span style="display: block;margin-top: 10px;margin-bottom: 20px;">This might take a while.</span></div></div>
+    <div style="-webkit-app-region: drag; position: fixed; top: 0; left: 0; right: 0; height: 38px;"></div>
+    <div style="text-align: center; margin-top: 10px;"><b>#<span id="id">-</span></b> — <span id="type">-</span> — <span id="rating">-</span> — <span id="time">-</span></div>
+    <div onclick="document.getElementById('image').classList.remove('censored');" id="image" style="image-rendering: pixelated; width: 400px;aspect-ratio: 1/1;margin-left: auto;margin-right: 60px;margin-top: 20px;background-color: rgba(0, 0, 0, .1);border-radius: 10px;background-size: contain;background-position: center;background-repeat: no-repeat;"></div>
+    <div style="    position: fixed;
+    left: 340px;
+    margin-top: 20px;
+    right: 230px;    bottom: 50px;
+    height: 85px; display: flex; align-items: center;" id="characters">-</div>
+    <div style="    position: fixed;
+    top: 50px;
+    background: rgba(0, 0, 0, .1);
+    left: 20px;
+    bottom: 50px;
+    width: 256px;
+    border-radius: 10px; padding:10px;">
+        <div style="border-bottom: 1px solid rgba(0, 0, 0, .1); padding-bottom: 10px;">
+            <img src="./icon-round.png" alt="" style="width: 32px; vertical-align: middle;"><span style="vertical-align: middle; margin-left: 5px;"><b>Derpier</b> v<span id="data-version">-</span></span>
+        </div>
+
+        <div style="margin-top: 15px;"><b>Database</b></div>
+        <div style="margin-left: 10px;">Format: <span id="data-db-format">-</span></div>
+        <div style="margin-left: 10px;">Last saved: <span id="data-db-save">-</span></div>
+        <div style="margin-left: 10px;">Size: <span id="data-db-size">-</span></div>
+        <div style="margin-left: 10px;">Signature: <span id="data-db-signature">-</span></div>
+
+        <div style="margin-top: 22px;"><b>Model</b></div>
+        <div style="margin-left: 15px;">Parameters: <span id="data-model-params">-</span></div>
+        <div style="margin-left: 15px;">Groups: <span id="data-model-groups">-</span></div>
+        <div style="margin-left: 15px;">Validated: <span id="data-model-validated">-</span></div>
+        <div style="margin-left: 15px;">Ignored: <span id="data-model-ignored">-</span></div>
+
+        <div style="margin-top: 22px;"><b>Size</b></div>
+        <div style="margin-left: 15px;">Raw size: <span id="data-size-raw">-</span></div>
+        <div style="margin-left: 15px;">Model size: <span id="data-size-model">-</span></div>
+        <div style="margin-left: 15px;">Metadata size: <span id="data-size-metadata">-</span></div>
+
+        <div style="margin-top: 22px;"><b>Image</b></div>
+        <div style="margin-left: 15px;">ID: <span id="data-image-id">-</span></div>
+        <div style="margin-left: 15px;">Size: <span id="data-image-size">-</span></div>
+        <div style="margin-left: 15px;">Prediction: <span id="data-image-prediction">-</span></div>
+        <style>
+            #data-image-prediction {
+                filter: blur(10px);
+            }
+
+            #data-image-prediction:hover {
+                filter: none !important;
+            }
+        </style>
+        <div style="margin-left: 15px;">Accuracy: <span id="data-image-accuracy">-</span></div>
+    </div>
+    <div id="items" class="disabled" style="
+    width: max-content;
+    margin-left: auto;
+    margin-right: 50px;
+    margin-top: 32px;
+">
+        <div id="yes" onclick="yes();" class="i" style="
+    display: inline-block;
+    border-radius: 999px;
+    border: 1px solid black;
+    padding: 8px;
+">
+            <img src="yes.svg" alt="" style="
+    width: 32px;
+    vertical-align: middle;
+    pointer-events: none;
+">
+        </div>
+        <div onclick="ignore();" class="i" style="
+    display: inline-block;
+    border-radius: 999px;
+    border: 1px solid black;
+    padding: 8px;
+">
+            <img src="ignore.svg" alt="" style="
+    width: 32px;
+    vertical-align: middle;
+    pointer-events: none;
+">
+        </div>
+        <div id="no" onclick="no();" class="i" style="
+    display: inline-block;
+    border-radius: 999px;
+    border: 1px solid black;
+    padding: 8px;
+">
+            <img src="no.svg" alt="" style="
+    width: 32px;
+    vertical-align: middle;
+    pointer-events: none;
+">
+        </div>
+    </div>
+
+    <script>
+        function predict(image) {
+            /*if (db['entries'].length < 100) {
+                return null;
+            }
+
+            let values = [
+                [],
+                []
+            ];
+
+            let scores = [
+                [],
+                []
+            ];
+
+            let current = {
+                id: currentImage,
+                tags: images[currentImageIndex]['tag_ids'],
+                characters: images[currentImageIndex]["tag_ids"].filter(i => Object.keys(db['characters']).includes('c' + i.toString())).map(i => db['characters']['c' + i.toString()]).filter(i => i && i.trim().toString() !== ""),
+                metadata: {
+                    animated: images[currentImageIndex]['animated'],
+                    duration: images[currentImageIndex]['duration'],
+                    height: images[currentImageIndex]['height'],
+                    width: images[currentImageIndex]['width'],
+                    aspect_ratio: images[currentImageIndex]['aspect_ratio'],
+                }
+            };
+
+            let weights = {
+                tags: 1.5,
+                animated: 0.5,
+                duration: 1,
+                height: 1,
+                width: 1,
+                aspect_ratio: 1
+            }
+
+            for (let entry of db['entries']) {
+                // tags
+                let matchedTags = entry.tags.filter(i => current.tags.includes(i));
+                let totalTags = entry.tags;
+                let tags = matchedTags.length / totalTags.length;
+
+                // animated
+                let animated = Math.abs(entry.animated === current.animated ? 1 : 0);
+
+                // duration
+                let duration = Math.abs(1 - Math.abs(entry.metadata.duration - current.metadata.duration) / Math.max(entry.metadata.duration, current.metadata.duration));
+
+                // height
+                let height = Math.abs(1 - Math.abs(entry.metadata.height - current.metadata.height) / Math.max(entry.metadata.height, current.metadata.height));
+
+                // width
+                let width = Math.abs(1 - Math.abs(entry.metadata.width - current.metadata.width) / Math.max(entry.metadata.width, current.metadata.width));
+
+                // aspect_ratio
+                let aspect_ratio = Math.abs(1 - Math.abs(entry.metadata.aspect_ratio - current.metadata.aspect_ratio) / Math.max(entry.metadata.aspect_ratio, current.metadata.aspect_ratio));
+
+                let slot = entry.liked ? 0 : 1;
+                values[slot].push({
+                    tags,
+                    animated,
+                    duration,
+                    height,
+                    width,
+                    aspect_ratio
+                });
+            }
+
+            for (let i = 0; i < 2; i++) {
+                for (let entry of values[i]) {
+                    let tags = entry["tags"] * weights.tags;
+                    let animated = entry["animated"] * weights.animated;
+                    let duration = entry["duration"] * weights.duration;
+                    let height = entry["height"] * weights.height;
+                    let width = entry["width"] * weights.width;
+                    let aspect_ratio = entry["aspect_ratio"] * weights.aspect_ratio;
+
+                    let final = (tags + animated + duration + height + width + aspect_ratio) / (weights.tags + weights.animated + weights.duration + weights.height + weights.width + weights.aspect_ratio);
+
+                    scores[i].push(final);
+                }
+            }
+
+            console.log(current, weights, values, scores);
+
+            return scores.map(i => i.reduce((a, b) => a + b) / i.length);*/
+
+            let possible = [ 26707, 29266, 41161, 40482, 43502, 39068, 29300 ];
+            let ratings = images[currentImageIndex]["tag_ids"].filter(i => possible.includes(i));
+
+            let tags = {};
+
+            for (let entry of db['entries']) {
+                let proceed = true;
+
+                for (let rating of ratings) {
+                    if (!entry['tags'].includes(rating)) {
+                        proceed = false;
+                    }
+                }
+
+                if (proceed) {
+                    for (let tag of entry['tags']) {
+                        if (!tags[tag]) tags[tag] = {
+                            id: tag,
+                            score: 0,
+                            entries: 0,
+                            final: null
+                        }
+
+                        tags[tag]['entries']++;
+                        tags[tag]['score'] += entry['liked'] ? 1 : -1;
+                    }
+                }
+            }
+
+            for (let id of Object.keys(tags)) {
+                tags[id]['final'] = tags[id]['score'] / tags[id]['entries'];
+            }
+
+            console.log(tags, Object.values(tags).sort((a, b) => b.final - a.final));
+
+            let resolved = images[currentImageIndex]['tag_ids'].filter(i => tags[i]).map(i => (tags[i]['final'] + 1) / 2);
+
+            return [
+                resolved.reduce((a, b) => a + b) / resolved.length,
+                1 - resolved.reduce((a, b) => a + b) / resolved.length
+            ];
+        }
+
+        function save() {
+            console.log("Saving database...");
+            db['save'] = new Date().getTime();
+            fs.writeFileSync(os.homedir() + "/.config/derpier-database.dpiz", zlib.deflateRawSync(JSON.stringify(db)));
+            console.log("Database saved");
+        }
+
+        function formatSize(bytes) {
+            if (bytes > 1024) {
+                if (bytes > 1024**2) {
+                    if (bytes > 1024**3) {
+                        return (bytes / 1024**3).toFixed(1) + " GiB";
+                    } else {
+                        return (bytes / 1024**2).toFixed(1) + " MiB";
+                    }
+                } else {
+                    return (bytes / 1024).toFixed(1) + " KiB";
+                }
+            } else {
+                return Math.round(bytes) + " B";
+            }
+        }
+
+        function formatLargeNumber(n) {
+            if (n > 1000) {
+                if (n > 1000000) {
+                    if (n > 1000000000) {
+                        return (n / 1000000000).toFixed(1) + "B";
+                    } else {
+                        return (n / 1000000).toFixed(1) + "M";
+                    }
+                } else {
+                    return (n / 1000).toFixed(1) + "K";
+                }
+            } else {
+                return n;
+            }
+        }
+
+        function refreshInfo() {
+            console.log("Refreshing info...");
+            document.getElementById("data-db-save").innerText = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', year: 'numeric', month: '2-digit', hour: 'numeric', minute: '2-digit', second: '2-digit' }).format(new Date(db['save']));
+            document.getElementById("data-db-size").innerText = formatSize(fs.lstatSync(os.homedir() + "/.config/derpier-database.dpiz").size) + " (" + ((fs.lstatSync(os.homedir() + "/.config/derpier-database.dpiz").size / JSON.stringify(db).length) * 100).toFixed(1) + "% ratio)";
+            document.getElementById("data-db-signature").innerText = crc.crc32(fs.readFileSync(os.homedir() + "/.config/derpier-database.dpiz")).toString(16).toUpperCase();
+            console.log("Done for 'db'");
+
+            document.getElementById("data-model-params").innerText = formatLargeNumber(db['entries'].map(i => Object.values(i).map(j => { if (typeof j === "number") { return [j]; } else { return Object.values(j); } }).reduce((a, b) => [...a, ...b]).length).reduce((a, b) => a + b));
+            document.getElementById("data-model-groups").innerText = formatLargeNumber(db['entries'].length);
+            document.getElementById("data-model-validated").innerText = db['passed'].length + " item" + (db['passed'].length !== 1 ? "s" : "");
+            document.getElementById("data-model-ignored").innerText = db['ignored'].length + " item" + (db['ignored'].length !== 1 ? "s" : "");
+            console.log("Done for 'model'");
+
+            document.getElementById("data-size-raw").innerText = formatSize(JSON.stringify(db).length);
+            document.getElementById("data-size-model").innerText = formatSize(JSON.stringify(db['entries']).length);
+            document.getElementById("data-size-metadata").innerText = formatSize(JSON.stringify(db).length - JSON.stringify(db['entries']).length);
+            console.log("Done for 'size'");
+
+            document.getElementById("data-image-id").innerText = currentImage;
+            document.getElementById("data-image-size").innerText = formatSize(images[currentImageIndex]['size']);
+            document.getElementById("data-image-prediction").innerText = db['predictions'];
+
+            let prediction = predict(images[currentImageIndex]);
+            window.currentlyPredicted = false;
+
+            if (prediction) {
+                let result = prediction.map(i => i * 100);
+
+                if (result[0] > result[1] && result[0] > 50) {
+                    result[0] = "<b>" + result[0].toFixed(1) + "%</b>";
+                    result[1] = result[1].toFixed(1) + "%";
+
+                    //document.getElementById("yes").classList.add("predicted");
+                    //document.getElementById("no").classList.remove("predicted");
+
+                    db['predictions'].unshift([1, null]);
+                    window.currentlyPredicted = true;
+                } else if (result[1] > result[0] && result[1] > 50) {
+                    result[0] = result[0].toFixed(1) + "%";
+                    result[1] = "<b>" + result[1].toFixed(1) + "%</b>";
+
+                    //document.getElementById("yes").classList.remove("predicted");
+                    //document.getElementById("no").classList.add("predicted");
+
+                    db['predictions'].unshift([2, null]);
+                    window.currentlyPredicted = true;
+                } else {
+                    result[0] = result[0].toFixed(1) + "%";
+                    result[1] = result[1].toFixed(1) + "%";
+
+                    //document.getElementById("yes").classList.remove("predicted");
+                    //document.getElementById("no").classList.remove("predicted");
+                    window.currentlyPredicted = false;
+                }
+
+                document.getElementById("data-image-prediction").innerHTML = result.join("/");
+            }
+
+            db['predictions'] = db['predictions'].slice(0, 1000);
+            save();
+            if (db['predictions'].filter(i => i[1]).length > 1) document.getElementById("data-image-accuracy").innerText = (((db['predictions'].filter(i => i[1]).map(i => i[0] === i[1] ? 1 : 0).reduce((a, b) => a + b)) / db['predictions'].filter(i => i[1]).length) * 100).toFixed(1) + "%";
+            console.log("Done for 'image'");
+
+            console.log("Refreshed info");
+        }
+
+        const crc = require('crc');
+        const os = require('os');
+        const fs = require('fs');
+        const zlib = require('zlib');
+        const axios = require('axios');
+        const Fuse = require('fuse.js');
+
+        let latest = true;
+        let images;
+        let currentImage = 0;
+        let currentImageIndex = -1;
+
+        function ignore() {
+            console.log("Ignoring image");
+            document.getElementById("items").classList.add("disabled");
+            db.ignored.push(currentImage);
+            save();
+            nextImage();
+        }
+
+        function yes() {
+            console.log("Adding image as positive");
+            document.getElementById("items").classList.add("disabled");
+            saveResult(true);
+            save();
+            nextImage();
+        }
+
+        function no() {
+            console.log("Adding image as negative");
+            document.getElementById("items").classList.add("disabled");
+            saveResult(false);
+            save();
+            nextImage();
+        }
+
+        function saveResult(liked) {
+            console.log("Adding entry to the database");
+
+            if (currentlyPredicted) db['predictions'][0][1] = liked ? 1 : 2;
+            if (db.ignored.includes(currentImage)) db.ignored = db.ignored.filter(i => i !== currentImage);
+
+            db.entries.push({
+                liked,
+                id: currentImage,
+                tags: images[currentImageIndex]['tag_ids'],
+                characters: images[currentImageIndex]["tag_ids"].filter(i => Object.keys(db['characters']).includes('c' + i.toString())).map(i => db['characters']['c' + i.toString()]).filter(i => i && i.trim().toString() !== ""),
+                metadata: {
+                    animated: images[currentImageIndex]['animated'],
+                    duration: images[currentImageIndex]['duration'],
+                    height: images[currentImageIndex]['height'],
+                    width: images[currentImageIndex]['width'],
+                    aspect_ratio: images[currentImageIndex]['aspect_ratio'],
+                }
+            });
+            db.passed.push(currentImage);
+        }
+
+        function timeAgo(time) {
+            if (!isNaN(parseInt(time))) {
+                time = new Date(time).getTime();
+            }
+
+            let periods = ["second", "minute", "hour", "day", "week", "month", "year", "age"];
+
+            let lengths = ["60", "60", "24", "7", "4.35", "12", "100"];
+
+            let now = new Date().getTime();
+
+            let difference = Math.round((now - time) / 1000);
+            let tense;
+            let period;
+
+            if (difference <= 10 && difference >= 0) {
+                return "now";
+            } else if (difference > 0) {
+                tense = "ago";
+            } else {
+                tense = "later";
+            }
+
+            let j;
+
+            for (j = 0; difference >= lengths[j] && j < lengths.length - 1; j++) {
+                difference /= lengths[j];
+            }
+
+            difference = Math.round(difference);
+
+            period = periods[j];
+
+            return `${difference} ${period}${difference > 1 ? "s" : ""} ${tense}`;
+        }
+
+        function nextImage() {
+            console.log("Loading next image...");
+            currentImageIndex++;
+
+            if (images[currentImageIndex]) {
+                console.log("Found image");
+                currentImage = images[currentImageIndex].id;
+                document.getElementById("id").innerText = currentImage;
+                console.log("Set 'id'");
+                document.getElementById("type").innerText = latest ? "Latest on Derpibooru" : "Random images";
+                console.log("Set 'type'");
+                document.getElementById("characters").innerText = images[currentImageIndex]["tag_ids"].filter(i => Object.keys(db['characters']).includes('c' + i.toString())).map(i => db['characters']['c' + i.toString()]).filter(i => i && i.trim().toString() !== "").join(", ");
+                console.log("Set 'characters'");
+                document.getElementById("time").innerText = timeAgo(images[currentImageIndex]['created_at']);
+                console.log("Set 'time'");
+
+                let possible = [ "explicit", "grimdark", "semi-grimdark", "safe", "suggestive", "questionable", "grotesque" ];
+                let ratings = images[currentImageIndex]["tags"].filter(i => possible.includes(i));
+
+                document.getElementById("rating").innerText = ratings.map(i => i.charAt(0).toUpperCase() + i.slice(1)).join(", ");
+                console.log("Set 'rating'");
+                if (!images[currentImageIndex].tags.includes("safe")) {
+                    document.getElementById("image").classList.add("censored");
+                    console.log("Image is NSFW, censoring it");
+                }
+                document.getElementById("image").style.backgroundImage = "url('" + images[currentImageIndex]['view_url'] + "')";
+                console.log("Loading image...");
+                document.getElementById("items").classList.remove("disabled");
+
+                document.getElementById("loader2").style.display = "none";
+                console.log("Triggering info refresh...");
+                refreshInfo();
+
+                console.log("-- User interaction time --");
+            } else {
+                (async () => {
+                    console.log("Loading next batch of images...");
+
+                    latest = false;
+                    images = (await axios.get("https://derpibooru.org/api/v1/json/search/images?filter_id=56027&sf=random&q=-(safe%20%26%26%20g4)%2C%20-oc%2C%20-g1%2C%20-g3%2C%20-(human%20%26%26%20!equestria%20girls)&per_page=50")).data.images.filter(i => i['mime_type'].startsWith("image/") && !i['deletion_reason'] && !i['duplicate_of'] && !i['hidden_from_users'] && !db.passed.includes(i['id']));
+
+                    currentImage = 0;
+                    currentImageIndex = -1;
+                    nextImage();
+                })();
+            }
+        }
+
+        console.log("Loading database...");
+        const db = JSON.parse(zlib.inflateRawSync(fs.readFileSync(os.homedir() + "/.config/derpier-database.dpiz")).toString());
+        if (!db['predictions']) db['predictions'] = [];
+        console.log("Opened database");
+
+        function sleep(ms) {
+            return new Promise((res) => {
+                setTimeout(res, ms);
+            });
+        }
+
+        async function start() {
+            console.log("Started program");
+            document.getElementById("data-db-format").innerText = "Standard Derpier zlib";
+
+            try {
+                document.getElementById("data-version").innerText = require('./package.json')['version'];
+            } catch (e) {
+                document.getElementById("data-version").innerText = "-";
+            }
+
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("loader2").style.display = "flex";
+
+            console.log("Loading first batch of images...");
+
+            images = (await axios.get("https://derpibooru.org/api/v1/json/search/images?filter_id=56027&sf=first_seen_at&sd=desc&q=-(safe%20%26%26%20g4)%2C%20-oc%2C%20-g1%2C%20-g3%2C%20-(human%20%26%26%20!equestria%20girls)&per_page=50")).data.images.filter(i => i['mime_type'].startsWith("image/") && !i['deletion_reason'] && !i['duplicate_of'] && !i['hidden_from_users'] && !db.passed.includes(i['id']));
+            if (images[images.length - 1]) db['last'] = images[images.length - 1].id;
+            save();
+
+            nextImage();
+        }
+
+        async function characters() {
+            console.log("Refreshing characters...");
+
+            let total = (await axios.get("https://derpibooru.org/api/v1/json/search/tags?q=category:character&per_page=1")).data.total;
+            let done = 0;
+            let pages = Math.ceil(total / 50);
+
+            let durations = [];
+
+            for (let page = 1; page <= pages; page++) {
+                let start = new Date().getTime();
+                await sleep(1000);
+                console.log("Loaded page " + page + "/" + pages);
+
+                let tags = (await axios.get("https://derpibooru.org/api/v1/json/search/tags?q=category:character&per_page=50&page=" + page)).data.tags;
+
+                for (let tag of tags) {
+                    db['characters']['c' + tag['id'].toString()] = tag['name_in_namespace'].split(" ").map(i => i.charAt(0).toUpperCase() + i.slice(1)).join(" ").split("-").map(i => i.charAt(0).toUpperCase() + i.slice(1)).join("-").split("_").map(i => i.charAt(0).toUpperCase() + i.slice(1)).join("_");
+                }
+                save();
+
+                done += tags.length;
+                document.getElementById("loader-percentage").innerText = Math.round((done / total) * 100).toString();
+                document.getElementById("loader-progress").style.width = ((done / total) * 100).toString() + "%";
+                let end = new Date().getTime();
+                durations.push(end - start);
+
+                if (page > 10) {
+                    let eta = Math.round(((durations.reduce((a, b) => a + b) / durations.length) * (pages - page)) / 1000);
+                    let etaString = eta + " second" + (eta > 1 ? "s" : "");
+
+                    if (eta > 60) {
+                        etaString = Math.round(eta / 60) + " minute" + (Math.round(eta / 60) > 1 ? "s" : "");
+                    }
+
+                    document.getElementById("loader-eta").innerText = etaString;
+                    document.getElementById("loader-eta-outer").style.display = "";
+                }
+            }
+
+            console.log("Done refreshing characters");
+            db['characterRefresh'] = new Date().getTime();
+            save();
+            start();
+        }
+
+        if ((db['characterRefresh'] && new Date().toDateString() !== new Date(db['characterRefresh']).toDateString()) || !db['characterRefresh']) {
+            console.log("Character refresh is required, starting it");
+            characters();
+        } else {
+            console.log("No character refresh needed, continuing");
+            start();
+        }
+    </script>
+</body>
+</html>
